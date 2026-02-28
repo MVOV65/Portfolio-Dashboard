@@ -104,35 +104,35 @@ export default function StockChart({ symbol, label, onClose }) {
       </div>
 
       <div className="chart-body">
-        {loading && <p className="chart-status">LOADING CANDLES…</p>}
+        {loading && <p className="chart-status">LOADING…</p>}
         {error && <p className="chart-status error">{error}</p>}
         {!loading && !error && candles.length > 0 && (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={candles} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+            <LineChart data={candles} margin={{ top: 8, right: 20, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="2 4" stroke="rgba(0,255,204,0.07)" vertical={false} />
               <XAxis
                 dataKey="date"
-                tick={{ fill: '#7a8a9a', fontSize: 10, fontFamily: 'monospace' }}
+                tick={{ fill: '#4a6272', fontSize: 10, fontFamily: 'monospace' }}
                 tickLine={false}
-                axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-                interval={Math.floor(candles.length / 6)}
+                axisLine={{ stroke: 'rgba(0,255,204,0.12)' }}
+                interval={Math.floor(candles.length / 5)}
               />
               <YAxis
                 domain={[priceMin, priceMax]}
-                tick={{ fill: '#7a8a9a', fontSize: 10, fontFamily: 'monospace' }}
+                tick={{ fill: '#4a6272', fontSize: 10, fontFamily: 'monospace' }}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(v) => `$${v.toFixed(0)}`}
-                width={52}
+                tickFormatter={(v) => `$${Number(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
+                width={58}
               />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(0,255,204,0.2)', strokeWidth: 1 }} />
               <Line
                 type="monotone"
                 dataKey="close"
                 stroke={lineColor}
                 strokeWidth={2}
                 dot={false}
-                activeDot={{ r: 4, fill: lineColor, stroke: '#0a0e14' }}
+                activeDot={{ r: 4, fill: lineColor, stroke: '#080c12', strokeWidth: 2 }}
               />
             </LineChart>
           </ResponsiveContainer>

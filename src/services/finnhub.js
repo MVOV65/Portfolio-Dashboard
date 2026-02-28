@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_KEY = 'd6hl9ahr01qr5k4cdr80d6hl9ahr01qr5k4cdr8g';
+const API_KEY = import.meta.env.VITE_FINNHUB_API_KEY;
 const BASE_URL = 'https://finnhub.io/api/v1';
 
 const client = axios.create({
@@ -58,15 +58,15 @@ export async function fetchAllQuotes() {
   return results;
 }
 
-// Yahoo Finance unofficial chart API — no key required
-export async function fetchCandles(symbol, days = 30) {
+// Yahoo Finance chart data — routed through Vite proxy to avoid CORS
+export async function fetchCandles(symbol) {
   const yahooSymbol = CRYPTO_MAP[symbol]?.yahooSymbol ?? symbol;
   const url =
-    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}` +
-    `?range=1mo&interval=1d&includePrePost=false`;
+    `/yahoo-finance/v8/finance/chart/${encodeURIComponent(yahooSymbol)}` +
+    `?range=30d&interval=1d&includePrePost=false`;
 
   const { data } = await axios.get(url, {
-    headers: { 'Accept': 'application/json' },
+    headers: { Accept: 'application/json' },
   });
 
   const result = data?.chart?.result?.[0];

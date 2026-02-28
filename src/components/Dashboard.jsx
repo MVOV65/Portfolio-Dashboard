@@ -4,7 +4,7 @@ import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import TickerTable from './TickerTable';
 import StockChart from './StockChart';
-import { fetchAllQuotes, TICKERS, CRYPTO_TICKERS } from '../services/finnhub';
+import { fetchAllQuotes, TICKERS, CRYPTO_TICKERS, CRYPTO_MAP } from '../services/finnhub';
 
 const REFRESH_INTERVAL = 5_000;
 
@@ -21,7 +21,14 @@ function Countdown({ seconds }) {
 }
 
 export default function Dashboard() {
-  const [quotes, setQuotes] = useState([]);
+  const [quotes, setQuotes] = useState(() =>
+    TICKERS.map((sym) => ({
+      symbol: sym,
+      label: CRYPTO_MAP[sym]?.label ?? sym,
+      isCrypto: !!CRYPTO_MAP[sym],
+      c: null, d: null, dp: null, v: null,
+    }))
+  );
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [countdown, setCountdown] = useState(REFRESH_INTERVAL / 1000);
@@ -117,13 +124,7 @@ export default function Dashboard() {
               {loading && <span className="loading-badge">LOADING…</span>}
             </div>
             <div className="module-content">
-              {quotes.length > 0 ? (
-                <TickerTable quotes={quotes} onTickerClick={openChart} refreshKey={refreshKey} cryptoTickers={CRYPTO_TICKERS} />
-              ) : (
-                <div className="empty-state">
-                  {loading ? 'FETCHING MARKET DATA…' : 'NO DATA'}
-                </div>
-              )}
+              <TickerTable quotes={quotes} onTickerClick={openChart} refreshKey={refreshKey} cryptoTickers={CRYPTO_TICKERS} />
             </div>
           </div>
         </GridLayout>

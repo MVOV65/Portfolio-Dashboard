@@ -46,27 +46,30 @@ function TickerRow({ q, index, refreshKey, onTickerClick }) {
     return () => clearTimeout(staggerTimer);
   }, [refreshKey, index]);
 
+  const hasData = q.c != null;
   const pos = q.dp >= 0;
-  const colorClass = pos ? 'positive' : 'negative';
+  const colorClass = hasData ? (pos ? 'positive' : 'negative') : '';
   const displayLabel = q.label ?? q.symbol;
 
   return (
     <tr
-      className={`ticker-row${flashing ? ' row-refresh-flash' : ''}${q.isCrypto ? ' crypto-row' : ''}`}
+      className={`ticker-row${flashing ? ' row-refresh-flash' : ''}${q.isCrypto ? ' crypto-row' : ''}${!hasData ? ' pending' : ''}`}
       onClick={() => onTickerClick(q.symbol)}
     >
       <td className="ticker-symbol">{displayLabel}</td>
       <td>
-        <FlashCell value={q.c}>${fmt(q.c)}</FlashCell>
+        <FlashCell value={q.c}>
+          {hasData ? `$${fmt(q.c)}` : '—'}
+        </FlashCell>
       </td>
       <td>
         <FlashCell value={q.d} className={colorClass}>
-          {q.d >= 0 ? '+' : ''}{fmt(q.d)}
+          {hasData ? `${q.d >= 0 ? '+' : ''}${fmt(q.d)}` : '—'}
         </FlashCell>
       </td>
       <td>
         <FlashCell value={q.dp} className={colorClass}>
-          {q.dp >= 0 ? '+' : ''}{fmt(q.dp)}%
+          {hasData ? `${q.dp >= 0 ? '+' : ''}${fmt(q.dp)}%` : '—'}
         </FlashCell>
       </td>
       <td className="vol-cell">{fmtVol(q.v)}</td>

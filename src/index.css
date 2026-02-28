@@ -218,6 +218,8 @@ body::before {
 
 .crypto-row .ticker-symbol { color: var(--magenta); }
 
+.ticker-row.pending td:not(.ticker-symbol) { color: var(--text-dim); opacity: 0.45; }
+
 .section-separator td {
   padding: 0;
   height: 1px;

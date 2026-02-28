@@ -16,14 +16,19 @@
   --font:      'Courier New', 'Lucida Console', monospace;
 }
 
-html, body, #root {
-  height: 100%;
+html, body {
+  min-height: 100%;
+  width: 100%;
+  background: var(--bg);
+}
+
+#root {
+  min-height: 100%;
   width: 100%;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
   font-size: 13px;
-  overflow-x: hidden;
 }
 
 /* Subtle scanline overlay */
@@ -44,7 +49,7 @@ body::before {
 
 /* ─── Dashboard Shell ───────────────────────────────────────────────────── */
 .dashboard {
-  min-height: 100vh;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -108,17 +113,27 @@ body::before {
 /* ─── Main Content ──────────────────────────────────────────────────────── */
 .dash-main {
   flex: 1;
-  padding: 16px;
+  position: relative;
 }
 
-/* ─── Grid Module ───────────────────────────────────────────────────────── */
+/* ─── Grid Module — every draggable window ──────────────────────────────── */
 .grid-module {
   background: var(--bg-module);
   border: 1px solid var(--border);
   display: flex;
   flex-direction: column;
+  /* height 100% fills the react-grid-layout cell; overflow:hidden keeps
+     content from bursting the window — only .module-content scrolls */
+  height: 100%;
   overflow: hidden;
-  box-shadow: 0 0 20px rgba(0, 255, 204, 0.05), inset 0 0 40px rgba(0,0,0,0.3);
+  box-shadow: 0 0 20px rgba(0, 255, 204, 0.06), inset 0 0 40px rgba(0,0,0,0.3);
+}
+
+/* react-grid-layout sets position:absolute + explicit w/h on each item.
+   Make sure our module fills it exactly and doesn't leak. */
+.react-grid-item > .grid-module {
+  position: absolute;
+  inset: 0;
 }
 
 .module-drag-handle {
@@ -149,6 +164,7 @@ body::before {
 .module-content {
   flex: 1;
   overflow: auto;
+  min-height: 0;
 }
 
 .empty-state {
@@ -340,15 +356,54 @@ body::before {
 
 /* ─── React Grid Layout overrides ──────────────────────────────────────── */
 .react-grid-item.react-grid-placeholder {
-  background: rgba(0, 255, 204, 0.08);
-  border: 1px dashed var(--border);
+  background: rgba(0, 255, 204, 0.07);
+  border: 1px dashed rgba(0, 255, 204, 0.35);
+  border-radius: 0;
 }
 
+/* Resize handle — bottom-right corner of each grid window */
 .react-resizable-handle {
   background: none !important;
+  width: 20px !important;
+  height: 20px !important;
+  bottom: 2px !important;
+  right: 2px !important;
+  z-index: 10;
 }
 .react-resizable-handle::after {
-  border-color: var(--border) !important;
+  border-color: rgba(0, 255, 204, 0.4) !important;
+  width: 8px !important;
+  height: 8px !important;
+  border-width: 0 2px 2px 0 !important;
+}
+.react-grid-item:hover .react-resizable-handle::after {
+  border-color: var(--cyan) !important;
+}
+
+/* While dragging, lift the window visually */
+.react-grid-item.react-draggable-dragging {
+  box-shadow: 0 0 32px rgba(0, 255, 204, 0.2), 0 8px 32px rgba(0,0,0,0.6) !important;
+  z-index: 200;
+}
+
+/* While resizing */
+.react-grid-item.resizing {
+  opacity: 0.9;
+  z-index: 200;
+}
+
+/* ─── Placeholder feeds ─────────────────────────────────────────────────── */
+.placeholder-feed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+.placeholder-feed-text {
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
 /* ─── Scrollbar ─────────────────────────────────────────────────────────── */
@@ -356,3 +411,277 @@ body::before {
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: rgba(0,255,204,0.25); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(0,255,204,0.45); }
+
+/* ─── News Feed ──────────────────────────────────────────────────────────── */
+.news-feed-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.news-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 120px;
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+}
+
+/* ── News Item (accordion) ── */
+.news-item {
+  border-bottom: 1px solid var(--border-dim);
+  transition: background 0.15s;
+}
+.news-item:hover {
+  background: rgba(0, 255, 204, 0.03);
+}
+.news-item-expanded {
+  background: rgba(0, 255, 204, 0.04);
+  border-bottom: 1px solid var(--border);
+}
+
+/* The clickable header portion */
+.news-item-header {
+  all: unset;
+  display: block;
+  width: 100%;
+  padding: 10px 14px 8px;
+  cursor: pointer;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.news-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.news-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.news-ticker-badge {
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--cyan);
+  letter-spacing: 0.1em;
+}
+
+.news-ticker-badge.crypto-badge {
+  color: var(--magenta);
+  letter-spacing: 0.08em;
+}
+
+.news-time {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+}
+
+.news-source {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Headline — full text, no clamp, wraps freely */
+.news-headline {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.5;
+  margin-bottom: 2px;
+  padding-right: 18px;
+}
+
+.news-expand-icon {
+  position: absolute;
+  bottom: 10px;
+  right: 14px;
+  font-size: 9px;
+  color: var(--text-dim);
+}
+
+/* Expanded body */
+.news-item-body {
+  padding: 0 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid var(--border-dim);
+  margin: 0 14px;
+}
+
+.news-item-timestamp {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  padding-top: 10px;
+}
+
+.news-item-summary {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.65;
+  opacity: 0.9;
+}
+
+.news-item-summary-empty {
+  opacity: 0.4;
+  font-style: italic;
+}
+
+.news-footer {
+  padding: 10px 14px;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  border-top: 1px solid var(--border-dim);
+  text-align: center;
+}
+
+/* ─── News Modal (draggable + resizable floating window) ─────────────────── */
+.news-modal {
+  position: fixed;
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-module);
+  border: 1px solid var(--border);
+  box-shadow: 0 0 48px rgba(0, 255, 204, 0.1), 0 16px 48px rgba(0, 0, 0, 0.8);
+  min-width: 400px;
+  min-height: 280px;
+}
+
+.news-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 9px 14px;
+  background: rgba(0, 255, 204, 0.07);
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  user-select: none;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.news-modal-header:active { cursor: grabbing; }
+
+.news-modal-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.news-modal-ticker {
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--cyan);
+  letter-spacing: 0.12em;
+}
+
+.news-modal-source {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.news-modal-ts {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+}
+
+.news-modal-close {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.news-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.news-modal-headline {
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.55;
+  font-weight: bold;
+}
+
+.news-modal-summary {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.7;
+  opacity: 0.88;
+  border-left: 2px solid var(--border);
+  padding-left: 14px;
+}
+
+/* Resize handle in bottom-right corner */
+.news-modal-resize {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 18px;
+  height: 18px;
+  cursor: se-resize;
+  background: linear-gradient(135deg, transparent 50%, var(--border) 50%);
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.news-modal-resize:hover { opacity: 1; }
+
+/* ─── Shared link / button styles ────────────────────────────────────────── */
+.news-modal-link {
+  display: inline-block;
+  font-size: 11px;
+  color: var(--cyan);
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  border: 1px solid var(--border);
+  padding: 5px 12px;
+  align-self: flex-start;
+  font-family: var(--font);
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.news-modal-link:hover {
+  background: rgba(0, 255, 204, 0.1);
+  box-shadow: 0 0 10px rgba(0, 255, 204, 0.2);
+}
+
+.news-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.news-popup-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--magenta);
+  font-family: var(--font);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.news-popup-btn:hover {
+  background: rgba(255, 0, 170, 0.1);
+  box-shadow: 0 0 10px rgba(255, 0, 170, 0.2);
+}

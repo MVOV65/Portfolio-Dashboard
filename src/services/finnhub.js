@@ -58,6 +58,64 @@ export async function fetchAllQuotes() {
   return results;
 }
 
+// Fetch general crypto news from Finnhub's market news endpoint
+async function fetchCryptoNews() {
+  try {
+    const { data } = await client.get('/news', { params: { category: 'crypto' } });
+    if (!Array.isArray(data)) return [];
+    return data
+      .filter((item) => item.headline && item.url)
+      .map((item) => ({ ...item, ticker: 'CRYPTO' }));
+  } catch {
+    return [];
+  }
+}
+
+// Fetch recent company news for all equity tickers plus general crypto news,
+// deduplicated by article id and sorted newest first.
+export async function fetchNews() {
+  const to = new Date();
+  const from = new Date();
+  from.setDate(from.getDate() - 7);
+  const fromStr = from.toISOString().slice(0, 10);
+  const toStr = to.toISOString().slice(0, 10);
+
+  const results = [];
+
+  // Equity company news
+  for (const symbol of EQUITY_TICKERS) {
+    try {
+      const { data } = await client.get('/company-news', {
+        params: { symbol, from: fromStr, to: toStr },
+      });
+      if (Array.isArray(data)) {
+        data.forEach((item) => {
+          if (item.headline && item.url) {
+            results.push({ ...item, ticker: symbol });
+          }
+        });
+      }
+    } catch {
+      // skip silently
+    }
+    await delay(150);
+  }
+
+  // Crypto market news (single call, no ticker loop)
+  const cryptoNews = await fetchCryptoNews();
+  results.push(...cryptoNews);
+
+  // Deduplicate by article id, sort newest first
+  const seen = new Set();
+  return results
+    .filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    })
+    .sort((a, b) => b.datetime - a.datetime);
+}
+
 // Yahoo Finance chart data — routed through /api/chart serverless function
 // to avoid CORS. Works in both local dev (Vite) and production (Vercel).
 export async function fetchCandles(symbol) {

@@ -5,10 +5,14 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/yahoo-finance': {
+      '/api/chart': {
         target: 'https://query1.finance.yahoo.com',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/yahoo-finance/, ''),
+        rewrite: (path) => {
+          const url = new URL(path, 'http://localhost');
+          const symbol = url.searchParams.get('symbol') ?? '';
+          return `/v8/finance/chart/${encodeURIComponent(symbol)}?range=30d&interval=1d&includePrePost=false`;
+        },
         secure: true,
       },
     },

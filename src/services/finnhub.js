@@ -58,16 +58,13 @@ export async function fetchAllQuotes() {
   return results;
 }
 
-// Yahoo Finance chart data — routed through Vite proxy to avoid CORS
+// Yahoo Finance chart data — routed through /api/chart serverless function
+// to avoid CORS. Works in both local dev (Vite) and production (Vercel).
 export async function fetchCandles(symbol) {
   const yahooSymbol = CRYPTO_MAP[symbol]?.yahooSymbol ?? symbol;
-  const url =
-    `/yahoo-finance/v8/finance/chart/${encodeURIComponent(yahooSymbol)}` +
-    `?range=30d&interval=1d&includePrePost=false`;
+  const url = `/api/chart?symbol=${encodeURIComponent(yahooSymbol)}`;
 
-  const { data } = await axios.get(url, {
-    headers: { Accept: 'application/json' },
-  });
+  const { data } = await axios.get(url);
 
   const result = data?.chart?.result?.[0];
   if (!result) return [];

@@ -39,12 +39,17 @@ function buildDefaultLayout(headerH) {
   ];
 }
 
+const REQUIRED_PANELS = ['ticker', 'news', 'empty1', 'empty2', 'sector', 'sentiment'];
+
 function loadSaved() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length >= 4) return parsed;
+      if (Array.isArray(parsed)) {
+        const savedKeys = new Set(parsed.map((item) => item.i));
+        if (REQUIRED_PANELS.every((key) => savedKeys.has(key))) return parsed;
+      }
     }
   } catch { /* ignore */ }
   return null;

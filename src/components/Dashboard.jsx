@@ -5,6 +5,7 @@ import 'react-resizable/css/styles.css';
 import TickerTable from './TickerTable';
 import StockChart from './StockChart';
 import NewsFeed from './NewsFeed';
+import EconomicCalendar from './EconomicCalendar';
 import { fetchAllQuotes, TICKERS, CRYPTO_TICKERS, CRYPTO_MAP } from '../services/finnhub';
 
 const REFRESH_INTERVAL = 5_000;
@@ -181,11 +182,13 @@ export default function Dashboard() {
               <NewsFeed />
             </div>
           </div>
-            <div key="empty1" className="grid-module">
+          <div key="empty1" className="grid-module">
             <div className="module-drag-handle">
-              <span>⠿ PANEL 3</span>
+              <span>⠿ ECONOMIC CALENDAR</span>
             </div>
-            <div className="module-content" />
+            <div className="module-content">
+              <EconomicCalendar />
+            </div>
           </div>
 
           <div key="empty2" className="grid-module">

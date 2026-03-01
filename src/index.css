@@ -392,6 +392,88 @@ body::before {
   z-index: 200;
 }
 
+/* ─── Economic Calendar ──────────────────────────────────────────────────── */
+.eco-wrapper {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.eco-loading, .eco-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: var(--text-dim);
+}
+.eco-error { color: var(--red); }
+
+.eco-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.eco-table thead th {
+  padding: 6px 10px;
+  text-align: left;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,0.3);
+  text-transform: uppercase;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+}
+
+.eco-date-row td {
+  padding: 8px 10px 4px;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.14em;
+  color: var(--cyan);
+  text-transform: uppercase;
+  border-top: 1px solid var(--border);
+  background: rgba(0, 255, 204, 0.04);
+}
+
+.eco-today td {
+  color: var(--magenta);
+  background: rgba(255, 0, 170, 0.06);
+  border-top: 1px solid rgba(255, 0, 170, 0.3);
+}
+
+.eco-event-row {
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-dim);
+  transition: background 0.12s;
+}
+.eco-event-row:hover { background: rgba(0, 255, 204, 0.05); }
+
+.eco-past { opacity: 0.55; }
+
+.eco-name {
+  padding: 7px 10px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.eco-val {
+  padding: 7px 10px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+
+.eco-prior { opacity: 0.7; }
+.eco-positive { color: var(--green); }
+.eco-negative { color: var(--red); }
+
 /* ─── Placeholder feeds ─────────────────────────────────────────────────── */
 .placeholder-feed {
   display: flex;

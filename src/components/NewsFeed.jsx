@@ -1,7 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchNews } from '../services/finnhub';
 
-const NEWS_REFRESH_INTERVAL = 5 * 60 * 1000;
+const NEWS_REFRESH_INTERVAL = 30 * 60 * 1000; // 30 minutes
+
+async function fetchNewsFromCache() {
+  const res = await fetch('/api/news');
+  if (!res.ok) throw new Error(`/api/news returned ${res.status}`);
+  const payload = await res.json();
+  // payload shape: { articles: [...], cachedAt: "ISO" }
+  return payload.articles ?? [];
+}
 
 function timeAgo(unixSeconds) {
   const diff = Math.floor(Date.now() / 1000) - unixSeconds;
@@ -122,11 +129,14 @@ function NewsItem({ article, onOpenModal }) {
   const [expanded, setExpanded] = useState(false);
   const hasSummary = article.summary && article.summary !== article.headline;
 
+  const isSol = article.ticker === 'SOLUSD' ||
+    /\bsolana\b|\bSOL\b/i.test(article.headline + ' ' + (article.summary ?? ''));
+
   return (
-    <div className={`news-item${expanded ? ' news-item-expanded' : ''}`}>
+    <div className={`news-item${expanded ? ' news-item-expanded' : ''}${isSol ? ' sol-item' : ''}`}>
       <button className="news-item-header" onClick={() => setExpanded((v) => !v)}>
         <div className="news-item-top">
-          <span className={`news-ticker-badge${article.ticker === 'CRYPTO' ? ' crypto-badge' : ''}`}>
+          <span className={`news-ticker-badge${article.ticker === 'CRYPTO' ? ' crypto-badge' : ''}${isSol ? ' sol-badge' : ''}`}>
             {article.ticker}
           </span>
           <div className="news-item-meta">
@@ -183,9 +193,13 @@ export default function NewsFeed() {
 
   const load = useCallback(async () => {
     try {
-      const data = await fetchNews();
-      if (mountedRef.current) { setArticles(data); setLastUpdated(new Date()); }
-    } catch { /* keep stale */ } finally {
+      const data = await fetchNewsFromCache();
+      // Only replace if we got results — keeps stale cache on empty/failed fetch
+      if (mountedRef.current && data.length > 0) {
+        setArticles(data);
+        setLastUpdated(new Date());
+      }
+    } catch { /* keep stale cache on error */ } finally {
       if (mountedRef.current) setLoading(false);
     }
   }, []);

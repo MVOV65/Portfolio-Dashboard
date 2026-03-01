@@ -6,9 +6,12 @@ import TickerTable from './TickerTable';
 import StockChart from './StockChart';
 import NewsFeed from './NewsFeed';
 import EconomicCalendar from './EconomicCalendar';
-import { fetchAllQuotes, TICKERS, CRYPTO_TICKERS, CRYPTO_MAP } from '../services/finnhub';
+import Heatmap from './Heatmap';
+import SectorPerformance from './SectorPerformance';
+import MarketSentiment from './MarketSentiment';
+import { fetchAllQuotes, TICKERS, CRYPTO_TICKERS, CRYPTO_MAP, SECTOR_ETF_SET } from '../services/finnhub';
 
-const REFRESH_INTERVAL = 5_000;
+const REFRESH_INTERVAL = 10_000; // 10 seconds
 const STORAGE_KEY      = 'mkt-layout-v2';
 const ROW_HEIGHT       = 60;
 const MARGIN           = 4;
@@ -23,12 +26,16 @@ function fitH(totalPx, n) {
 
 function buildDefaultLayout(headerH) {
   const canvasPx = window.innerHeight - headerH;
-  const halfH = fitH(canvasPx, 2);
+  const halfH    = fitH(canvasPx, 2);
+  // Sector panel: full width, sized to fit 13 rows (~30px each) + handle
+  const sectorH  = Math.max(3, Math.round((13 * 34 + 40 + MARGIN) / (ROW_HEIGHT + MARGIN)));
   return [
-    { i: 'ticker', x: 0, y: 0,      w: 6, h: halfH, minW: 2, minH: 3 },
-    { i: 'news',   x: 6, y: 0,      w: 6, h: halfH, minW: 2, minH: 3 },
-    { i: 'empty1', x: 0, y: halfH,  w: 6, h: halfH, minW: 2, minH: 3 },
-    { i: 'empty2', x: 6, y: halfH,  w: 6, h: halfH, minW: 2, minH: 3 },
+    { i: 'ticker', x: 0, y: 0,           w: 6,  h: halfH,  minW: 2, minH: 3 },
+    { i: 'news',   x: 6, y: 0,           w: 6,  h: halfH,  minW: 2, minH: 3 },
+    { i: 'empty1', x: 0, y: halfH,       w: 6,  h: halfH,  minW: 2, minH: 3 },
+    { i: 'empty2', x: 6, y: halfH,       w: 6,  h: halfH,  minW: 2, minH: 3 },
+    { i: 'sector',    x: 0, y: halfH * 2,            w: 9, h: sectorH, minW: 4, minH: 3 },
+    { i: 'sentiment', x: 9, y: halfH * 2,            w: 3, h: sectorH, minW: 2, minH: 3 },
   ];
 }
 
@@ -37,7 +44,7 @@ function loadSaved() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length >= 2) return parsed;
+      if (Array.isArray(parsed) && parsed.length >= 4) return parsed;
     }
   } catch { /* ignore */ }
   return null;
@@ -55,6 +62,8 @@ export default function Dashboard() {
   const headerRef    = useRef(null);
   const userActedRef = useRef(false);
 
+  // TICKERS includes crypto, equity watchlist, AND sector ETFs.
+  // Sector ETFs are filtered out before rendering TickerTable / Heatmap.
   const [quotes, setQuotes] = useState(() =>
     TICKERS.map((sym) => ({
       symbol: sym, label: CRYPTO_MAP[sym]?.label ?? sym,
@@ -99,6 +108,7 @@ export default function Dashboard() {
         setQuotes((prev) => {
           const prevMap  = Object.fromEntries(prev.map((q) => [q.symbol, q]));
           const freshMap = Object.fromEntries(fresh.map((q) => [q.symbol, q]));
+          // TICKERS now includes sector ETFs — merge all of them
           return TICKERS.map((sym) => freshMap[sym] ?? prevMap[sym]).filter(Boolean);
         });
         setLastUpdated(new Date());
@@ -125,6 +135,10 @@ export default function Dashboard() {
 
   const openChart  = useCallback((sym) => setOpenCharts((p) => p.includes(sym) ? p : [...p, sym]), []);
   const closeChart = useCallback((sym) => setOpenCharts((p) => p.filter((s) => s !== sym)), []);
+
+  // Sector ETFs are fetched in the shared loop but should NOT appear in the
+  // TickerTable or Heatmap — those panels show only watchlist tickers.
+  const watchlistQuotes = quotes.filter((q) => !SECTOR_ETF_SET.has(q.symbol));
 
   return (
     <div className="dashboard">
@@ -166,7 +180,7 @@ export default function Dashboard() {
             </div>
             <div className="module-content">
               <TickerTable
-                quotes={quotes}
+                quotes={watchlistQuotes}
                 onTickerClick={openChart}
                 refreshKey={refreshKey}
                 cryptoTickers={CRYPTO_TICKERS}
@@ -193,9 +207,29 @@ export default function Dashboard() {
 
           <div key="empty2" className="grid-module">
             <div className="module-drag-handle">
-              <span>⠿ PANEL 4</span>
+              <span>⠿ HEATMAP</span>
             </div>
-            <div className="module-content" />
+            <div className="module-content">
+              <Heatmap quotes={watchlistQuotes} onClickTicker={openChart} />
+            </div>
+          </div>
+
+          <div key="sector" className="grid-module">
+            <div className="module-drag-handle">
+              <span>⠿ SECTOR PERFORMANCE</span>
+            </div>
+            <div className="module-content">
+              <SectorPerformance quotes={quotes} />
+            </div>
+          </div>
+
+          <div key="sentiment" className="grid-module">
+            <div className="module-drag-handle">
+              <span>⠿ MARKET SENTIMENT</span>
+            </div>
+            <div className="module-content">
+              <MarketSentiment />
+            </div>
           </div>
         </GridLayout>
       </main>

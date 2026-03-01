@@ -25,7 +25,37 @@ export const EQUITY_TICKERS = [
   'USAR', 'UUUU', 'ONDS', 'IBKR', 'BX',
 ];
 
-export const TICKERS = [...CRYPTO_TICKERS, ...EQUITY_TICKERS];
+// Sector ETFs fetched in the same loop as main tickers — not shown in TickerTable.
+// CRYPTO_MAP entries double as Crypto Large/Mid/Small Cap proxies in SectorPerformance.
+export const SECTOR_ETFS = [
+  'XLK', 'XLF', 'XLE', 'XLV', 'XLI',
+  'XLY', 'XLP', 'XLU', 'XLB', 'XLRE',
+];
+
+// Metadata consumed by SectorPerformance — no API calls needed there.
+export const SECTOR_META = [
+  { ticker: 'XLK',    label: 'Technology',            isCrypto: false },
+  { ticker: 'XLF',    label: 'Financials',             isCrypto: false },
+  { ticker: 'XLE',    label: 'Energy',                 isCrypto: false },
+  { ticker: 'XLV',    label: 'Healthcare',             isCrypto: false },
+  { ticker: 'XLI',    label: 'Industrials',            isCrypto: false },
+  { ticker: 'XLY',    label: 'Consumer Discretionary', isCrypto: false },
+  { ticker: 'XLP',    label: 'Consumer Staples',       isCrypto: false },
+  { ticker: 'XLU',    label: 'Utilities',              isCrypto: false },
+  { ticker: 'XLB',    label: 'Materials',              isCrypto: false },
+  { ticker: 'XLRE',   label: 'Real Estate',            isCrypto: false },
+  // Crypto proxies map to existing CRYPTO_MAP keys
+  { ticker: 'BTCUSD', label: 'Crypto Large Cap', displayTicker: 'BTC', isCrypto: true },
+  { ticker: 'ETHUSD', label: 'Crypto Mid Cap',   displayTicker: 'ETH', isCrypto: true },
+  { ticker: 'SOLUSD', label: 'Crypto Small Cap', displayTicker: 'SOL', isCrypto: true },
+];
+
+// All tickers fetched in the single sequential loop.
+// SECTOR_ETFS are appended at the end; crypto tickers already included via CRYPTO_TICKERS.
+export const TICKERS = [...CRYPTO_TICKERS, ...EQUITY_TICKERS, ...SECTOR_ETFS];
+
+// Set for O(1) lookup — used by Dashboard to filter sector ETFs out of TickerTable
+export const SECTOR_ETF_SET = new Set(SECTOR_ETFS);
 
 export async function fetchQuote(symbol) {
   const crypto = CRYPTO_MAP[symbol];
@@ -44,16 +74,48 @@ export async function fetchQuote(symbol) {
 
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
+// Fetch a single quote with exponential backoff on 429 rate-limit responses
+async function fetchQuoteWithBackoff(symbol, maxRetries = 3) {
+  let wait = 1000;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const crypto = CRYPTO_MAP[symbol];
+      const apiSymbol = crypto ? crypto.finnhubSymbol : symbol;
+      const { data, status } = await client.get('/quote', {
+        params: { symbol: apiSymbol },
+        validateStatus: (s) => s < 500, // don't throw on 4xx so we can inspect
+      });
+
+      if (status === 429) {
+        if (attempt < maxRetries) {
+          await delay(wait);
+          wait *= 2; // exponential backoff: 1s, 2s, 4s
+          continue;
+        }
+        return null; // give up after retries
+      }
+
+      return {
+        symbol,
+        label:    crypto ? crypto.label : symbol,
+        isCrypto: !!crypto,
+        c: data.c, d: data.d, dp: data.dp, v: data.v,
+      };
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 export async function fetchAllQuotes() {
   const results = [];
   for (const symbol of TICKERS) {
-    try {
-      const quote = await fetchQuote(symbol);
-      results.push(quote);
-    } catch {
-      // skip failed tickers silently
-    }
-    await delay(200);
+    const quote = await fetchQuoteWithBackoff(symbol);
+    if (quote) results.push(quote);
+    // 400ms between requests = max 150 calls/min, well under Finnhub's 60/min
+    // limit per burst window (calls are sequential so real rate is ~2.5/sec)
+    await delay(400);
   }
   return results;
 }
@@ -98,7 +160,7 @@ export async function fetchNews() {
     } catch {
       // skip silently
     }
-    await delay(150);
+    await delay(400);
   }
 
   // Crypto market news (single call, no ticker loop)

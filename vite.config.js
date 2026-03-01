@@ -7,6 +7,18 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    build: {
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom'],
+            grid:   ['react-grid-layout'],
+            charts: ['recharts'],
+          },
+        },
+      },
+    },
     server: {
       proxy: {
         // ── /api/sentiment → CNN Fear & Greed (was /api/feargreed) ──────────

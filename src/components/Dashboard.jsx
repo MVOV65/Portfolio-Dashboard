@@ -63,9 +63,39 @@ function Countdown({ seconds }) {
   );
 }
 
+// Panel key → display label for the nav bar
+const NAV_TABS = [
+  { key: 'ticker',    label: 'TICKER FEED'        },
+  { key: 'news',      label: 'NEWS FEED'           },
+  { key: 'empty1',    label: 'ECO CALENDAR'        },
+  { key: 'empty2',    label: 'HEATMAP'             },
+  { key: 'sector',    label: 'SECTOR PERFORMANCE'  },
+  { key: 'sentiment', label: 'MARKET SENTIMENT'    },
+];
+
+function PanelNav({ activeKey, onTabClick, navRef }) {
+  return (
+    <nav ref={navRef} className="panel-nav" aria-label="Panel navigation">
+      {NAV_TABS.map(({ key, label }) => (
+        <button
+          key={key}
+          className={`panel-nav-tab${activeKey === key ? ' panel-nav-tab--active' : ''}`}
+          onClick={() => onTabClick(key)}
+          aria-current={activeKey === key ? 'true' : undefined}
+        >
+          <span className="panel-nav-hash">#</span>{label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 export default function Dashboard() {
   const headerRef    = useRef(null);
+  const navRef       = useRef(null);   // panel-nav bar
+  const mainRef      = useRef(null);   // dash-main scroll container
   const userActedRef = useRef(false);
+  const [activeTab, setActiveTab] = useState(NAV_TABS[0].key);
 
   // TICKERS includes crypto, equity watchlist, AND sector ETFs.
   // Sector ETFs are filtered out before rendering TickerTable / Heatmap.
@@ -141,6 +171,51 @@ export default function Dashboard() {
   const openChart  = useCallback((sym) => setOpenCharts((p) => p.includes(sym) ? p : [...p, sym]), []);
   const closeChart = useCallback((sym) => setOpenCharts((p) => p.filter((s) => s !== sym)), []);
 
+  // Track which panel is most visible using IntersectionObserver.
+  // Uses querySelector so it works regardless of react-grid-layout wrapper depth.
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    const ratios = {};
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => { ratios[e.target.dataset.panelKey] = e.intersectionRatio; });
+        const best = Object.entries(ratios).sort((a, b) => b[1] - a[1])[0];
+        if (best && best[1] > 0) setActiveTab(best[0]);
+      },
+      {
+        root:      main,
+        threshold: Array.from({ length: 21 }, (_, i) => i / 20),
+      }
+    );
+    NAV_TABS.forEach(({ key }) => {
+      const el = main.querySelector(`[data-panel-key="${key}"]`);
+      if (el) obs.observe(el);
+    });
+    return () => obs.disconnect();
+  }, [layout]);
+
+  // Scroll a panel into view when its nav tab is clicked.
+  // react-grid-layout uses absolute positioning inside dash-main, so we:
+  //   1. Get the panel's top relative to the viewport.
+  //   2. Get dash-main's top relative to the viewport.
+  //   3. Add dash-main's current scrollTop to get the target scroll position.
+  //   4. Subtract a small padding so the panel isn't flush against the nav bar.
+  const scrollToPanel = useCallback((key) => {
+    const main = mainRef.current;
+    if (!main) return;
+    const el = main.querySelector(`[data-panel-key="${key}"]`);
+    if (!el) return;
+
+    const panelTop  = el.getBoundingClientRect().top;
+    const mainTop   = main.getBoundingClientRect().top;
+    const scrollPad = 8;
+    const target    = main.scrollTop + (panelTop - mainTop) - scrollPad;
+
+    main.scrollTo({ top: target, behavior: 'smooth' });
+    setActiveTab(key);
+  }, []);
+
   // Sector ETFs are fetched in the shared loop but should NOT appear in the
   // TickerTable or Heatmap — those panels show only watchlist tickers.
   const watchlistQuotes = quotes.filter((q) => !SECTOR_ETF_SET.has(q.symbol));
@@ -162,7 +237,9 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="dash-main">
+      <PanelNav activeKey={activeTab} onTabClick={scrollToPanel} navRef={navRef} />
+
+      <main ref={mainRef} className="dash-main">
         <GridLayout
           layout={layout}
           cols={12}
@@ -178,7 +255,7 @@ export default function Dashboard() {
           isResizable
           resizeHandles={['se']}
         >
-          <div key="ticker" className="grid-module">
+          <div key="ticker" className="grid-module" data-panel-key="ticker">
             <div className="module-drag-handle">
               <span>⠿ TICKER FEED</span>
               {loading && <span className="loading-badge">LOADING…</span>}
@@ -193,7 +270,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div key="news" className="grid-module">
+          <div key="news" className="grid-module" data-panel-key="news">
             <div className="module-drag-handle">
               <span>⠿ NEWS FEED</span>
             </div>
@@ -201,7 +278,7 @@ export default function Dashboard() {
               <NewsFeed />
             </div>
           </div>
-          <div key="empty1" className="grid-module">
+          <div key="empty1" className="grid-module" data-panel-key="empty1">
             <div className="module-drag-handle">
               <span>⠿ ECONOMIC CALENDAR</span>
             </div>
@@ -210,7 +287,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div key="empty2" className="grid-module">
+          <div key="empty2" className="grid-module" data-panel-key="empty2">
             <div className="module-drag-handle">
               <span>⠿ HEATMAP</span>
             </div>
@@ -219,7 +296,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div key="sector" className="grid-module">
+          <div key="sector" className="grid-module" data-panel-key="sector">
             <div className="module-drag-handle">
               <span>⠿ SECTOR PERFORMANCE</span>
             </div>
@@ -228,7 +305,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div key="sentiment" className="grid-module">
+          <div key="sentiment" className="grid-module" data-panel-key="sentiment">
             <div className="module-drag-handle">
               <span>⠿ MARKET SENTIMENT</span>
             </div>

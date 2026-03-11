@@ -74,9 +74,13 @@ export async function fetchQuote(symbol) {
 
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
-// Fetch a single quote with exponential backoff on 429 rate-limit responses
+// Fetch a single quote with exponential backoff on 429 rate-limit responses.
+// Crypto (Binance) symbols are more likely to 429 so we start with a longer
+// initial wait (2s) for them vs equity tickers (1s).
 async function fetchQuoteWithBackoff(symbol, maxRetries = 3) {
-  let wait = 1000;
+  const isCryptoSym = !!CRYPTO_MAP[symbol];
+  let wait = isCryptoSym ? 2000 : 1000; // crypto starts at 2s backoff
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const crypto = CRYPTO_MAP[symbol];
@@ -89,10 +93,10 @@ async function fetchQuoteWithBackoff(symbol, maxRetries = 3) {
       if (status === 429) {
         if (attempt < maxRetries) {
           await delay(wait);
-          wait *= 2; // exponential backoff: 1s, 2s, 4s
+          wait *= 2; // exponential backoff: 2s → 4s → 8s (crypto) / 1s → 2s → 4s (equity)
           continue;
         }
-        return null; // give up after retries
+        return null; // give up after max retries
       }
 
       return {
@@ -113,9 +117,8 @@ export async function fetchAllQuotes() {
   for (const symbol of TICKERS) {
     const quote = await fetchQuoteWithBackoff(symbol);
     if (quote) results.push(quote);
-    // 400ms between requests = max 150 calls/min, well under Finnhub's 60/min
-    // limit per burst window (calls are sequential so real rate is ~2.5/sec)
-    await delay(400);
+    // 500ms between requests ≈ 2 calls/sec → well within Finnhub's 60 calls/min limit
+    await delay(500);
   }
   return results;
 }

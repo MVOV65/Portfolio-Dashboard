@@ -10,7 +10,10 @@ const FRED_BASE = 'https://api.stlouisfed.org/fred/series/observations';
 
 const SERIES_IDS = [
   'CPIAUCSL','CPILFESL','PPIACO','PCEPI','PCEPILFE',
-  'PAYEMS','UNRATE','GDP','RSAFS','MANEMP','UMCSENT','FEDFUNDS',
+  'PAYEMS','UNRATE','ICSA','GDPC1','MANEMP','NMFCI',
+  'RSAFS','INDPRO','HOUST','EXHOSLUSM495S',
+  'UMCSENT','JTSJOL','FEDFUNDS',
+  'DGS10','DGS2','T10Y2Y',
 ];
 
 async function fetchSeries(seriesId) {
